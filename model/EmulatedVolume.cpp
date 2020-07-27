@@ -44,6 +44,7 @@ EmulatedVolume::EmulatedVolume(const std::string& rawPath)
     setId("emulated");
     mRawPath = rawPath;
     mLabel = "emulated";
+    mParent = nullptr;
 }
 
 EmulatedVolume::EmulatedVolume(const std::string& rawPath, dev_t device, const std::string& fsUuid)
@@ -51,6 +52,7 @@ EmulatedVolume::EmulatedVolume(const std::string& rawPath, dev_t device, const s
     setId(StringPrintf("emulated:%u,%u", major(device), minor(device)));
     mRawPath = rawPath;
     mLabel = fsUuid;
+    mParent = nullptr;
 }
 
 EmulatedVolume::~EmulatedVolume() {}
@@ -130,6 +132,10 @@ status_t EmulatedVolume::doUnmount() {
     // the FUSE process first, most file system operations will return
     // ENOTCONN until the unmount completes. This is an exotic and unusual
     // error code and might cause broken behaviour in applications.
+    VolumeBase* parent = getParent();
+    if(parent != nullptr) {
+        KillProcessesUsingPath(parent->getPath());
+    }
     KillProcessesUsingPath(getPath());
     ForceUnmount(mFuseDefault);
     ForceUnmount(mFuseRead);

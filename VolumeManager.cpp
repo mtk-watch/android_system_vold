@@ -99,6 +99,7 @@ static const unsigned int kMajorBlockExperimentalMin = 240;
 static const unsigned int kMajorBlockExperimentalMax = 254;
 
 VolumeManager* VolumeManager::sInstance = NULL;
+extern bool coldboot_done;
 
 VolumeManager* VolumeManager::Instance() {
     if (!sInstance) sInstance = new VolumeManager();
@@ -228,6 +229,11 @@ void VolumeManager::handleBlockEvent(NetlinkEvent* evt) {
 
                     auto disk =
                         new android::vold::Disk(eventPath, device, source->getNickname(), flags);
+
+                    if (!coldboot_done && findPendingDisk(disk->getId())){
+                         LOG(WARNING) << disk->getId() << " may have the redundant disk 'add' uevent before coldboot() was done. Skip the uevent.";
+                         break;
+                    }
                     handleDiskAdded(std::shared_ptr<android::vold::Disk>(disk));
                     break;
                 }
@@ -302,6 +308,15 @@ void VolumeManager::addDiskSource(const std::shared_ptr<DiskSource>& diskSource)
 
 std::shared_ptr<android::vold::Disk> VolumeManager::findDisk(const std::string& id) {
     for (auto disk : mDisks) {
+        if (disk->getId() == id) {
+            return disk;
+        }
+    }
+    return nullptr;
+}
+
+std::shared_ptr<android::vold::Disk> VolumeManager::findPendingDisk(const std::string& id) {
+    for (auto disk : mPendingDisks) {
         if (disk->getId() == id) {
             return disk;
         }

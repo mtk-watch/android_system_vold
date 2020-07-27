@@ -165,6 +165,7 @@ status_t ForceUnmount(const std::string& path) {
         return OK;
     }
 
+    PLOG(ERROR) << "ForceUnmount Failed: " << path;
     return -errno;
 }
 
@@ -931,6 +932,7 @@ status_t WaitForFile(const char* filename, std::chrono::nanoseconds timeout) {
         struct stat sb;
         if (stat(filename, &sb) != -1) {
             LOG(INFO) << "wait for '" << filename << "' took " << t;
+            std::this_thread::sleep_for(10ms);
             return 0;
         }
         std::this_thread::sleep_for(10ms);
@@ -955,6 +957,21 @@ bool FsyncDirectory(const std::string& dirname) {
         }
     }
     return true;
+}
+
+int write_file_bootprof(const char* content) {
+    const char* path = "/proc/bootprof";
+    int fd = TEMP_FAILURE_RETRY(open(path, O_WRONLY|O_CREAT|O_NOFOLLOW|O_CLOEXEC, 0600));
+    if (fd == -1) {
+        PLOG(ERROR) << __FUNCTION__ << ": Failed to open " << path;
+        return -1;
+    }
+    int result = android::base::WriteStringToFd(content, fd) ? 0 : -1;
+    if (result == -1) {
+        PLOG(ERROR) << __FUNCTION__ << ": Failed to write " << path;
+    }
+    close(fd);
+    return result;
 }
 
 bool writeStringToFile(const std::string& payload, const std::string& filename) {

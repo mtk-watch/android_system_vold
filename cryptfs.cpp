@@ -79,6 +79,7 @@ using android::base::ParseUint;
 using android::base::StringPrintf;
 using android::fs_mgr::GetEntryForMountPoint;
 using namespace std::chrono_literals;
+using android::vold::write_file_bootprof;
 
 #define UNUSED __attribute__((unused))
 
@@ -130,8 +131,10 @@ static int keymaster_check_compatibility() {
 
 /* Create a new keymaster key and store it in this footer */
 static int keymaster_create_key(struct crypt_mnt_ftr* ftr) {
+    write_file_bootprof("vold:keymaster_create_key:START");
     if (ftr->keymaster_blob_size) {
         SLOGI("Already have key");
+        write_file_bootprof("vold:keymaster_create_key:END");
         return 0;
     }
 
@@ -146,6 +149,7 @@ static int keymaster_create_key(struct crypt_mnt_ftr* ftr) {
         SLOGE("Failed to generate keypair");
         return -1;
     }
+    write_file_bootprof("vold:keymaster_create_key:END");
     return 0;
 }
 
@@ -1247,6 +1251,7 @@ static int scrypt_keymaster(const char* passwd, const unsigned char* salt, unsig
     unsigned char* signature;
     struct crypt_mnt_ftr* ftr = (struct crypt_mnt_ftr*)params;
 
+    write_file_bootprof("vold:scrypt_keymaster:START");
     int N = 1 << ftr->N_factor;
     int r = 1 << ftr->r_factor;
     int p = 1 << ftr->p_factor;
@@ -1272,6 +1277,7 @@ static int scrypt_keymaster(const char* passwd, const unsigned char* salt, unsig
         SLOGE("scrypt failed");
         return -1;
     }
+    write_file_bootprof("vold:scrypt_keymaster:END");
 
     return 0;
 }
@@ -1283,6 +1289,7 @@ static int encrypt_master_key(const char* passwd, const unsigned char* salt,
     EVP_CIPHER_CTX e_ctx;
     int encrypted_len, final_len;
     int rc = 0;
+    write_file_bootprof("vold:encrypt_master_key:START");
 
     /* Turn the password into an intermediate key and IV that can decrypt the master key */
     get_device_scrypt_params(crypt_ftr);
@@ -1356,6 +1363,7 @@ static int encrypt_master_key(const char* passwd, const unsigned char* salt,
 
     EVP_CIPHER_CTX_cleanup(&e_ctx);
 
+    write_file_bootprof("vold:encrypt_master_key:END");
     return 0;
 }
 
@@ -1368,6 +1376,7 @@ static int decrypt_master_key_aux(const char* passwd, unsigned char* salt,
     EVP_CIPHER_CTX d_ctx;
     int decrypted_len, final_len;
 
+    write_file_bootprof("vold:decrypt_master_key:START");
     /* Turn the password into an intermediate key and IV that can decrypt the
        master key */
     if (kdf(passwd, salt, ikey, kdf_params)) {
@@ -1405,6 +1414,7 @@ static int decrypt_master_key_aux(const char* passwd, unsigned char* salt,
     }
 
     EVP_CIPHER_CTX_cleanup(&d_ctx);
+    write_file_bootprof("vold:decrypt_master_key:END");
 
     return 0;
 }
@@ -1566,6 +1576,7 @@ static int cryptfs_restart_internal(int restart_main) {
         SLOGE("System already restarted with encrypted disk, aborting");
         return -1;
     }
+    write_file_bootprof("vold:cryptfs_restart_internal:START");
 
     if (restart_main) {
         /* Here is where we shut down the framework.  The init scripts
@@ -1690,6 +1701,7 @@ static int cryptfs_restart_internal(int restart_main) {
         restart_successful = 1;
     }
 
+    write_file_bootprof("vold:cryptfs_restart_internal:END");
     return rc;
 }
 
@@ -2124,8 +2136,10 @@ static int cryptfs_enable_all_volumes(struct crypt_mnt_ftr* crypt_ftr, char* cry
     /* The size of the userdata partition, and add in the vold volumes below */
     tot_encryption_size = crypt_ftr->fs_size;
 
+    write_file_bootprof("vold:cryptfs_enable_inplace:START");
     rc = cryptfs_enable_inplace(crypto_blkdev, real_blkdev, crypt_ftr->fs_size, &cur_encryption_done,
                                 tot_encryption_size, previously_encrypted_upto, true);
+    write_file_bootprof("vold:cryptfs_enable_inplace:END");
 
     if (rc == ENABLE_INPLACE_ERR_DEV) {
         /* Hack for b/17898962 */
@@ -2487,11 +2501,19 @@ error_shutting_down:
 }
 
 int cryptfs_enable(int type, const char* passwd, int no_ui) {
-    return cryptfs_enable_internal(type, passwd, no_ui);
+    int ret = 0;
+    write_file_bootprof("vold:cryptfs_enable_internal:START");
+    ret = cryptfs_enable_internal(type, passwd, no_ui);
+    write_file_bootprof(StringPrintf("vold:cryptfs_enable_internal:END, ret=%d", ret).c_str());
+    return ret;
 }
 
 int cryptfs_enable_default(int no_ui) {
-    return cryptfs_enable_internal(CRYPT_TYPE_DEFAULT, DEFAULT_PASSWORD, no_ui);
+    int ret = 0;
+    write_file_bootprof("vold:cryptfs_enable_internal:START");
+    ret = cryptfs_enable_internal(CRYPT_TYPE_DEFAULT, DEFAULT_PASSWORD, no_ui);
+    write_file_bootprof(StringPrintf("vold:cryptfs_enable_internal:END, ret=%d", ret).c_str());
+    return ret;
 }
 
 int cryptfs_changepw(int crypt_type, const char* newpw) {

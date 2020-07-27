@@ -51,11 +51,21 @@ struct selabel_handle* sehandle;
 
 using android::base::StringPrintf;
 using android::fs_mgr::ReadDefaultFstab;
+bool coldboot_done = false;
+
+
+android::base::LogdLogger systemLogdLogger(android::base::SYSTEM);
+void SystemKernelLogger(android::base::LogId id, android::base::LogSeverity severity,
+                  const char* tag, const char* file, unsigned int line, const char* msg) {
+  systemLogdLogger(id, severity, tag, file, line, msg);
+  android::base::KernelLogger(id, severity, tag, file, line, msg);
+}
 
 int main(int argc, char** argv) {
     atrace_set_tracing_enabled(false);
     setenv("ANDROID_LOG_TAGS", "*:d", 1);  // Do not submit with verbose logs enabled
-    android::base::InitLogging(argv, android::base::LogdLogger(android::base::SYSTEM));
+    //android::base::InitLogging(argv, android::base::LogdLogger(android::base::SYSTEM));
+    android::base::InitLogging(argv, &SystemKernelLogger);
 
     LOG(INFO) << "Vold 3.0 (the awakening) firing up";
 
@@ -137,6 +147,7 @@ int main(int argc, char** argv) {
     // also the cold boot is needed in case we have flash drive
     // connected before Vold launched
     coldboot("/sys/block");
+    coldboot_done = true;
 
     ATRACE_END();
 

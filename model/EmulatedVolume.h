@@ -58,6 +58,17 @@ class EmulatedVolume : public VolumeBase {
     pid_t mFusePid;
 
     DISALLOW_COPY_AND_ASSIGN(EmulatedVolume);
+
+public:
+    VolumeBase* getParent() { return mParent;};
+    status_t setParent(VolumeBase* p) {
+        mParent = p;
+        return OK;
+    };
+
+private:
+    VolumeBase* mParent;
+
 };
 
 }  // namespace vold

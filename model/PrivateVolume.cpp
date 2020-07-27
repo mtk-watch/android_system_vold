@@ -161,6 +161,7 @@ status_t PrivateVolume::doMount() {
     auto vol = std::shared_ptr<VolumeBase>(new EmulatedVolume(mediaPath, mRawDevice, mFsUuid));
     addVolume(vol);
     vol->create();
+    (std::static_pointer_cast<EmulatedVolume>(vol))->setParent(this);
 
     return OK;
 }

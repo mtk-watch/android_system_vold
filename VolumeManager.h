@@ -80,6 +80,7 @@ class VolumeManager {
     void addDiskSource(const std::shared_ptr<DiskSource>& diskSource);
 
     std::shared_ptr<android::vold::Disk> findDisk(const std::string& id);
+    std::shared_ptr<android::vold::Disk> findPendingDisk(const std::string& id);
     std::shared_ptr<android::vold::VolumeBase> findVolume(const std::string& id);
 
     void listVolumes(android::vold::VolumeBase::Type type, std::list<std::string>& list) const;

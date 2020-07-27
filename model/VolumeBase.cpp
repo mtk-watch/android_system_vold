@@ -190,6 +190,7 @@ status_t VolumeBase::doCreate() {
 status_t VolumeBase::destroy() {
     CHECK(mCreated);
 
+    LOG(VERBOSE) << getId() << " destroy++";
     if (mState == State::kMounted) {
         unmount();
         setState(State::kBadRemoval);
@@ -204,6 +205,7 @@ status_t VolumeBase::destroy() {
 
     status_t res = doDestroy();
     mCreated = false;
+    LOG(VERBOSE) << getId() << " destroy--";
     return res;
 }
 

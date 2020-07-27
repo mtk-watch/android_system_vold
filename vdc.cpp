@@ -80,6 +80,7 @@ int main(int argc, char** argv) {
         usage(argv[0]);
         exit(5);
     }
+    LOG(INFO) << "vdc()++ " << args[0] << " " << args[1];
     android::sp<android::IBinder> binder = getServiceAggressive();
     if (!binder) {
         LOG(ERROR) << "Failed to obtain vold Binder";
@@ -149,6 +150,7 @@ int main(int argc, char** argv) {
         LOG(ERROR) << "Raw commands are no longer supported";
         exit(EINVAL);
     }
+    LOG(INFO) << "vdc()-- " << args[0] << " " << args[1];
     return 0;
 }
 

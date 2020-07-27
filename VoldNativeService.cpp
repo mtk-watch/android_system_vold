@@ -197,7 +197,6 @@ status_t VoldNativeService::start() {
     }
     sp<ProcessState> ps(ProcessState::self());
     ps->startThreadPool();
-    ps->giveThreadPoolName();
     return android::OK;
 }
 
@@ -242,10 +241,14 @@ binder::Status VoldNativeService::reset() {
 }
 
 binder::Status VoldNativeService::shutdown() {
+    LOG(INFO) << "shutdown()++";
     ENFORCE_UID(AID_SYSTEM);
     ACQUIRE_LOCK;
 
-    return translate(VolumeManager::Instance()->shutdown());
+    int rtn = VolumeManager::Instance()->shutdown();
+
+    LOG(INFO) << "shutdown()--, rtn: " << rtn;
+    return translate(rtn);
 }
 
 binder::Status VoldNativeService::onUserAdded(int32_t userId, int32_t userSerial) {
@@ -645,10 +648,14 @@ binder::Status VoldNativeService::fdeGetField(const std::string& key, std::strin
     ACQUIRE_CRYPT_LOCK;
 
     char buf[PROPERTY_VALUE_MAX];
-    if (cryptfs_getfield(key.c_str(), buf, sizeof(buf)) != CRYPTO_GETFIELD_OK) {
+    memset(buf, 0x00, sizeof(buf));
+    int rtn = cryptfs_getfield(key.c_str(), buf, sizeof(buf));
+    if (rtn != CRYPTO_GETFIELD_OK && rtn != CRYPTO_GETFIELD_ERROR_NO_FIELD) {
         return error(StringPrintf("Failed to read field %s", key.c_str()));
     } else {
         *_aidl_return = buf;
+
+        LOG(DEBUG) << __FUNCTION__ << ": value: '" << buf << "'";
         return ok();
     }
 }
@@ -657,6 +664,7 @@ binder::Status VoldNativeService::fdeSetField(const std::string& key, const std:
     ENFORCE_UID(AID_SYSTEM);
     ACQUIRE_CRYPT_LOCK;
 
+    LOG(DEBUG) << __FUNCTION__ << ": key:" << key << " value:'" << value << "'";;
     return translate(cryptfs_setfield(key.c_str(), value.c_str()));
 }
 
@@ -690,8 +698,10 @@ binder::Status VoldNativeService::fdeClearPassword() {
 binder::Status VoldNativeService::fbeEnable() {
     ENFORCE_UID(AID_SYSTEM);
     ACQUIRE_CRYPT_LOCK;
-
-    return translateBool(fscrypt_initialize_global_de());
+    write_file_bootprof("vold:fbeEnable:START");
+    bool rtn = fscrypt_initialize_systemwide_keys();
+    write_file_bootprof(StringPrintf("vold:fbeEnable:END, rtn =%d", rtn).c_str());
+    return translateBool(rtn);
 }
 
 binder::Status VoldNativeService::mountDefaultEncrypted() {
@@ -710,7 +720,11 @@ binder::Status VoldNativeService::initUser0() {
     ENFORCE_UID(AID_SYSTEM);
     ACQUIRE_CRYPT_LOCK;
 
-    return translateBool(fscrypt_init_user0());
+    write_file_bootprof("vold:initUser0:START");
+    bool rtn = fscrypt_init_user0();
+    write_file_bootprof(StringPrintf("vold:initUser0:END, rtn =%d", rtn).c_str());
+
+    return translateBool(rtn);
 }
 
 binder::Status VoldNativeService::isConvertibleToFbe(bool* _aidl_return) {
